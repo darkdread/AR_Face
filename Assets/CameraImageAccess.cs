@@ -16,6 +16,7 @@ public class CameraImageAccess : MonoBehaviour
  
     #endregion // PRIVATE_MEMBERS
 
+    public static CameraImageAccess Instance;
     public RawImage rawImage;
     public static Texture2D texture;
  
@@ -23,6 +24,12 @@ public class CameraImageAccess : MonoBehaviour
  
     void Start()
     {
+
+        if (Instance == null){
+            Instance = this;
+        } else {
+            Destroy(gameObject);
+        }
  
         #if UNITY_EDITOR
         mPixelFormat = Vuforia.PIXEL_FORMAT.GRAYSCALE; // Need Grayscale for Editor
@@ -64,6 +71,26 @@ public class CameraImageAccess : MonoBehaviour
         }
  
     }
+
+    public static Texture2D GetLatestTexture(){
+        Vuforia.Image image = CameraDevice.Instance.GetCameraImage(Instance.mPixelFormat);
+ 
+        if (image != null)
+        {
+
+            byte[] pixels = image.Pixels;
+            texture.Resize(image.Width, image.Height);
+            texture.LoadRawTextureData(pixels);
+            texture.Apply();
+            // rawImage.texture = texture;
+            // rawImage.material.mainTexture = texture;
+
+            return texture;
+
+        }
+
+        return null;
+    }
  
     /// <summary>
     /// Called each time the Vuforia state is updated
@@ -74,36 +101,35 @@ public class CameraImageAccess : MonoBehaviour
         {
             if (mAccessCameraImage)
             {
-                Vuforia.Image image = CameraDevice.Instance.GetCameraImage(mPixelFormat);
+                // Vuforia.Image image = CameraDevice.Instance.GetCameraImage(mPixelFormat);
  
-                if (image != null)
-                {
-                    // Debug.Log(
-                    //     "\nImage Format: " + image.PixelFormat +
-                    //     "\nImage Size:   " + image.Width + "x" + image.Height +
-                    //     "\nBuffer Size:  " + image.BufferWidth + "x" + image.BufferHeight +
-                    //     "\nImage Stride: " + image.Stride + "\n"
-                    // );
- 
-                    byte[] pixels = image.Pixels;
- 
-                    if (pixels != null && pixels.Length > 0)
-                    {
-                        // Debug.Log(
-                        //     "\nImage pixels: " +
-                        //     pixels[0] + ", " +
-                        //     pixels[1] + ", " +
-                        //     pixels[2] + ", ...\n"
-                        // );
-                    }
+                // if (image != null)
+                // {
+                //     Debug.Log(
+                //         "\nImage Format: " + image.PixelFormat +
+                //         "\nImage Size:   " + image.Width + "x" + image.Height +
+                //         "\nBuffer Size:  " + image.BufferWidth + "x" + image.BufferHeight +
+                //         "\nImage Stride: " + image.Stride + "\n"
+                //     );
 
-                    texture.Resize(image.Width, image.Height);
-                    texture.LoadRawTextureData(pixels);
-                    texture.Apply();
-                    rawImage.texture = texture;
-                    rawImage.material.mainTexture = texture;
+                //     byte[] pixels = image.Pixels;
+                //     texture.Resize(image.Width, image.Height);
+                //     texture.LoadRawTextureData(pixels);
+                //     texture.Apply();
+                //     rawImage.texture = texture;
+                //     rawImage.material.mainTexture = texture;
+ 
+                //     if (pixels != null && pixels.Length > 0)
+                //     {
+                //         Debug.Log(
+                //             "\nImage pixels: " +
+                //             pixels[0] + ", " +
+                //             pixels[1] + ", " +
+                //             pixels[2] + ", ...\n"
+                //         );
+                //     }
 
-                }
+                // }
             }
         }
     }

@@ -13,7 +13,7 @@ public class CloudTrackableEventHandler : DefaultTrackableEventHandler
 {
     #region PRIVATE_MEMBERS
     CloudRecoBehaviour m_CloudRecoBehaviour;
-    CloudContentManager m_CloudContentManager;
+    CloudContentManager2 m_CloudContentManager2;
     #endregion // PRIVATE_MEMBERS
 
 
@@ -23,7 +23,7 @@ public class CloudTrackableEventHandler : DefaultTrackableEventHandler
         base.Start();
 
         m_CloudRecoBehaviour = FindObjectOfType<CloudRecoBehaviour>();
-        m_CloudContentManager = FindObjectOfType<CloudContentManager>();
+        m_CloudContentManager2 = FindObjectOfType<CloudContentManager2>();
     }
     #endregion // MONOBEHAVIOUR_METHODS
 
@@ -46,7 +46,7 @@ public class CloudTrackableEventHandler : DefaultTrackableEventHandler
     /// </summary>
     public void TargetCreated(TargetFinder.CloudRecoSearchResult targetSearchResult)
     {
-        m_CloudContentManager.HandleTargetFinderResult(targetSearchResult);
+        m_CloudContentManager2.HandleTargetFinderResult(targetSearchResult);
     }
     #endregion // PUBLIC_METHODS
 
@@ -66,9 +66,9 @@ public class CloudTrackableEventHandler : DefaultTrackableEventHandler
             m_CloudRecoBehaviour.CloudRecoEnabled = false;
         }
 
-        if (m_CloudContentManager)
+        if (m_CloudContentManager2)
         {
-            m_CloudContentManager.ShowTargetInfo(true);
+            m_CloudContentManager2.ShowTargetInfo(true);
         }
     }
 
@@ -85,9 +85,9 @@ public class CloudTrackableEventHandler : DefaultTrackableEventHandler
             m_CloudRecoBehaviour.CloudRecoEnabled = true;
         }
 
-        if (m_CloudContentManager)
+        if (m_CloudContentManager2)
         {
-            m_CloudContentManager.ShowTargetInfo(false);
+            m_CloudContentManager2.ShowTargetInfo(false);
         }
     }
 

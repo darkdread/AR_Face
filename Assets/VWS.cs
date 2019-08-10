@@ -111,9 +111,9 @@ public class VWS : MonoBehaviour
             //     if (response.result_code == "Success"){
             //         foreach(String s in response.results){
             //             print(s);
-            //             this.RetrieveTarget(s, response2 => {
+            //             this.DeleteTarget(s, response2 => {
             //                 if (response2.result_code == "Success"){
-            //                     print(response2.target_record.name);
+            //                     print("Removed " + response2.target_record.name);
             //                 }
             //             });
             //         }
