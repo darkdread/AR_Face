@@ -26,6 +26,11 @@ public class CloudContentManager2 : MonoBehaviour
 
     public void ShowTargetInfo(bool showInfo)
     {
+        // Don't open the target info if upload menu is open.
+        // if (CloudUploading.Instance.uploadMenu.activeSelf){
+        //     return;
+        // }
+
         Canvas canvas = cloudTargetInfo.GetComponentInParent<Canvas>();
 
         canvas.enabled = showInfo;

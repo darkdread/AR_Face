@@ -137,6 +137,7 @@ public class CameraImageAccess : MonoBehaviour
 
     public static Texture2D GetLatestTexture(){
         Vuforia.Image image = CameraDevice.Instance.GetCameraImage(Instance.mPixelFormat);
+        Debug.Log("CustomMessage: Pixel count: " + image.Pixels.Length);
  
         if (image != null)
         {

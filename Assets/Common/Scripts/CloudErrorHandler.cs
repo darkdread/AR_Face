@@ -120,7 +120,7 @@ public class CloudErrorHandler : MonoBehaviour, IObjectRecoEventHandler
 
         Debug.LogError("OnUpdateError() - Update Error: " + updateError + "\n\n" + errorTextConsole);
 
-        MessageBox.DisplayMessageBox(errorTitle, errorMsg, true, CloseDialog);
+        // MessageBox.DisplayMessageBox(errorTitle, errorMsg, true, CloseDialog);
     }
 
     // These interface methods implemented in seperate ICloudRecoEventHandler class

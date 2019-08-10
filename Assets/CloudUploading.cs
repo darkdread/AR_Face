@@ -11,6 +11,7 @@ using System.Configuration;
 using UnityEngine.UI;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 
 public class PostNewTrackableRequest
 {
@@ -39,6 +40,7 @@ public class CloudUploading : CloudTrackableEventHandler
     public Texture2D texture;
     public RawImage rawImage;
     public GameObject uploadMenu;
+    public GameObject cloudRecognition;
     public Text uploadStatusText;
     public Text openMenuStatusText;
 
@@ -60,40 +62,24 @@ public class CloudUploading : CloudTrackableEventHandler
     private byte[] requestBytesArray;
 
     public static int targetsInCamera;
+    public CloudContentManager2 cloudContentManager2;
 
     private void Awake(){
         texture = CameraImageAccess.texture;
-        
+    
         // By default, the camera loses track of an item during initialization.
         targetsInCamera = 1;
     }
 
-    // Take a "screenshot" of a camera's Render Texture.
-    private Texture2D RTImage(Camera camera)
-    {
-        // The Render Texture in RenderTexture.active is the one
-        // that will be read by ReadPixels.
-        var currentRT = RenderTexture.active;
-        RenderTexture.active = camera.targetTexture;
-
-        // Render the camera's view.
-        camera.Render();
-
-        // Make a new texture and read the active Render Texture into it.
-        Texture2D image = new Texture2D(camera.targetTexture.width, camera.targetTexture.height);
-        image.ReadPixels(new Rect(0, 0, camera.targetTexture.width, camera.targetTexture.height), 0, 0);
-        image.Apply();
-
-        // Replace the original active Render Texture.
-        RenderTexture.active = currentRT;
-        return image;
-    }
-
-    public void OpenUploadMenu()
+    public void ToggleUploadMenu()
     {
         // Close upload menu if already open.
         if (uploadMenu.activeSelf){
             uploadMenu.SetActive(false);
+
+            // Enable tracker.
+            Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().Start();
+
             return;
         }
 
@@ -120,6 +106,9 @@ public class CloudUploading : CloudTrackableEventHandler
         rawImage.material.mainTexture = texture;
 
         uploadMenu.SetActive(true);
+
+        // Disable tracker.
+        Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().Stop();
     }
 
     // Default pattern: Starts with any letter.
@@ -205,7 +194,7 @@ public class CloudUploading : CloudTrackableEventHandler
 
         ProfileData phoneData = new ProfileData();
         phoneData.name = "phone";
-        phoneData.value = ageField.text;
+        phoneData.value = phoneField.text;
         profileDatas.profileDatasArray[2] = phoneData;
 
         ProfileData addressData = new ProfileData();
@@ -228,18 +217,26 @@ public class CloudUploading : CloudTrackableEventHandler
         biographyData.value = biographyField.text;
         profileDatas.profileDatasArray[6] = biographyData;
 
+        // Convert to json to transfer data as metadata
         jsonData = JsonUtility.ToJson(profileDatas);
-        print(jsonData);
 
         StartCoroutine (PostNewTarget());
+    }
+
+    public void BackToMenu(){
+        SceneManager.LoadScene("Main Menu");
     }
 
     protected override void OnTrackingFound(){
         base.OnTrackingFound();
 
-        uploadButton.interactable = false;
+        // If the upload menu is inactive, hide the open upload button.
+        if (!uploadMenu.activeSelf){
+            uploadButton.interactable = false;
+        }
+
         targetsInCamera += 1;
-        print(string.Format("Targets found: {0}", targetsInCamera));
+        Debug.Log(string.Format("Targets found: {0}", targetsInCamera));
     }
 
     protected override void OnTrackingLost(){
@@ -250,12 +247,12 @@ public class CloudUploading : CloudTrackableEventHandler
             uploadButton.interactable = true;
         }
 
-        print(string.Format("Targets lost: {0}", targetsInCamera));
+        Debug.Log(string.Format("Targets lost: {0}", targetsInCamera));
     }
     
     IEnumerator PostNewTarget()
     {
-        print("CustomMessage: PostNewTarget()");
+        Debug.Log("CustomMessage: PostNewTarget()");
     
         string requestPath = "/targets";
         string serviceURI = url + requestPath;
@@ -345,6 +342,9 @@ public class CloudUploading : CloudTrackableEventHandler
             Debug.Log("request success");
             Debug.Log("returned data" + request.text);
             uploadStatusText.text = "Uploaded!";
+
+            // Close upload menu.
+            ToggleUploadMenu();
         }
 
         postUploadButton.interactable = true;
