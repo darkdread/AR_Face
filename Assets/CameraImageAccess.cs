@@ -72,21 +72,87 @@ public class CameraImageAccess : MonoBehaviour
  
     }
 
+    public static Texture2D RotateTexture(Texture2D t)
+    {
+        Texture2D newTexture = new Texture2D(t.height, t.width, t.format, false);
+
+        for(int i=0; i<t.width; i++)
+        {
+            for(int j=0; j<t.height; j++)
+            {
+                newTexture.SetPixel(j, i, t.GetPixel(t.width-i, j));
+            }
+        }
+        newTexture.Apply();
+        return newTexture;
+    }
+
+    public static Texture2D FlipTexture(Texture2D t)
+    {
+        Texture2D newTexture = new Texture2D(t.height, t.width, t.format, false);
+
+        Color[] originalPixels = t.GetPixels();
+        Color[] newPixels = new Color[originalPixels.Length];
+
+        int width = t.width;
+        int rows = t.height;
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < rows; y++)
+            {
+                newPixels[x + y * width] = originalPixels[x + (rows - y -1) * width];
+            }
+        }
+
+        newTexture.SetPixels(newPixels);
+        newTexture.Apply();
+        return newTexture;
+    }
+
+    public static void FlipTexture(Texture2D original, bool vertically)
+    {
+        var originalPixels = original.GetPixels();
+
+        Color[] newPixels = new Color[originalPixels.Length];
+
+        int width = original.width;
+        int rows = original.height;
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < rows; y++)
+            {
+                if (vertically){
+                    newPixels[x + y * width] = originalPixels[x + (rows - y -1) * width];
+                } else {
+                    newPixels[x + y * width] = originalPixels[width - 1 - x + y * width];
+                }
+            }
+        }
+
+        original.SetPixels(newPixels);
+        original.Apply();
+    }
+
     public static Texture2D GetLatestTexture(){
         Vuforia.Image image = CameraDevice.Instance.GetCameraImage(Instance.mPixelFormat);
  
         if (image != null)
         {
-
             byte[] pixels = image.Pixels;
+            
             texture.Resize(image.Width, image.Height);
             texture.LoadRawTextureData(pixels);
             texture.Apply();
+
+            texture = RotateTexture(texture);
+            FlipTexture(texture, false);
+            // texture = FlipTexture(texture);
             // rawImage.texture = texture;
             // rawImage.material.mainTexture = texture;
 
             return texture;
-
         }
 
         return null;

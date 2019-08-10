@@ -210,22 +210,22 @@ public class CloudUploading : CloudTrackableEventHandler
 
         ProfileData addressData = new ProfileData();
         addressData.name = "address";
-        addressData.value = ageField.text;
+        addressData.value = addressField.text;
         profileDatas.profileDatasArray[3] = addressData;
 
         ProfileData icData = new ProfileData();
         icData.name = "ic";
-        icData.value = ageField.text;
+        icData.value = icField.text;
         profileDatas.profileDatasArray[4] = icData;
         
         ProfileData occupationData = new ProfileData();
         occupationData.name = "occupation";
-        occupationData.value = ageField.text;
+        occupationData.value = occupationField.text;
         profileDatas.profileDatasArray[5] = occupationData;
 
         ProfileData biographyData = new ProfileData();
         biographyData.name = "biography";
-        biographyData.value = ageField.text;
+        biographyData.value = biographyField.text;
         profileDatas.profileDatasArray[6] = biographyData;
 
         jsonData = JsonUtility.ToJson(profileDatas);
