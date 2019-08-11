@@ -39,6 +39,7 @@ public class CloudContentManager2 : MonoBehaviour
     public void HandleTargetFinderResult(Vuforia.TargetFinder.CloudRecoSearchResult targetSearchResult)
     {
         Debug.Log("<color=blue>HandleTargetFinderResult(): " + targetSearchResult.TargetName + "</color>");
+        CloudUploading.currentImageData = targetSearchResult;
 
         // cloudTargetInfo.text =
         //     "Name: " + targetSearchResult.TargetName +

@@ -39,7 +39,7 @@ public class CloudUploading : CloudTrackableEventHandler
 
     public Texture2D texture;
     public RawImage rawImage;
-    public GameObject uploadMenu;
+    public GameObject uploadMenu, editMenu;
     public GameObject cloudRecognition;
     public Text uploadStatusText;
     public Text openMenuStatusText;
@@ -63,6 +63,8 @@ public class CloudUploading : CloudTrackableEventHandler
 
     public static int targetsInCamera;
     public CloudContentManager2 cloudContentManager2;
+
+    public static Vuforia.TargetFinder.CloudRecoSearchResult currentImageData;
 
     private void Awake(){
         texture = CameraImageAccess.texture;
@@ -91,21 +93,85 @@ public class CloudUploading : CloudTrackableEventHandler
             return;
         }
 
-        if (true){
-            nameField.text = "John Cena";
-            ageField.text = "18";
-            phoneField.text = "92859238";
-            addressField.text = "Boon Lay";
-            icField.text = "19";
-            occupationField.text = "Dungeon Master";
-            biographyField.text = "I'm hired for people to fulfill their fantasies, their deep dark fantasies. I was gonna be a movie star, you know, modeling and acting. After a hundred and two additions and small parts I decided y'know I had enough, Then I got in to Escort world. The client requests contain a lot of fetishes, so I just decided to go y'know... full Master, and change my entire house into a dungeon, uh... Dungeon Master. Now with a full dungeon in my house and It's going really well. Fisting is 300 bucks, and usually the guy is pretty much hard on pop to get really relaxed y'know and I have this long latex glove that goes all the way up to my armpit and then I put on a surgical latex glove up to my wrist and, just lube it up, and it's a long process y'know to get your...get your whole arm up there, but it's an intense feeling for the other person. I think for myself too, you go in places that even though it's physical with your hand but for some reason it's also more emotional it's more psychological too, and we both get you know to the same place it's really strange at the same time and I find sessions like that really exhausting. I don't know I feel kinda naked because I am looking at myself for the first time, well not myself but this aspect of my life for the first time and it's been harsh... three to five years already? I never thought about it... Kinda sad I feel kinda sad right now, I don't know why";
-        }
+        // Clear input fields.
+        SetInputFields(uploadMenu);
 
         texture = CameraImageAccess.GetLatestTexture();
         rawImage.texture = texture;
         rawImage.material.mainTexture = texture;
 
         uploadMenu.SetActive(true);
+
+        // Disable tracker.
+        Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().Stop();
+    }
+
+    private void SetInputFields(GameObject whichCanvas, bool clear = true){
+        // Get all input fields of canvas.
+        InputField[] profileFields = whichCanvas.transform.GetComponentsInChildren<InputField>(false);
+
+        nameField = profileFields[0];
+        ageField = profileFields[1];
+        phoneField = profileFields[2];
+        addressField = profileFields[3];
+        icField = profileFields[4];
+        occupationField = profileFields[5];
+        biographyField = profileFields[6];
+
+        if (clear){
+            nameField.text = "";
+            ageField.text = "";
+            phoneField.text = "";
+            addressField.text = "";
+            icField.text = "";
+            occupationField.text = "";
+            biographyField.text = "";
+            return;
+        }
+
+        // Fill input fields using current image's metadata.
+        if (currentImageData.MetaData.Length > 0){
+            ProfileDataList profileDataList = JsonUtility.FromJson<ProfileDataList>(currentImageData.MetaData);
+
+            // Set currrent image to cloud image.
+            nameField.text = profileDataList.profileDatasArray[0].value;
+            ageField.text = profileDataList.profileDatasArray[1].value;
+            phoneField.text = profileDataList.profileDatasArray[2].value;
+            addressField.text = profileDataList.profileDatasArray[3].value;
+            icField.text = profileDataList.profileDatasArray[4].value;
+            occupationField.text = profileDataList.profileDatasArray[5].value;
+            biographyField.text = profileDataList.profileDatasArray[6].value;
+        }
+    }
+
+    public void ToggleEditMenu()
+    {
+        // Close upload menu if already open.
+        if (editMenu.activeSelf){
+            editMenu.SetActive(false);
+
+            // Enable tracker.
+            Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().Start();
+
+            return;
+        }
+
+        // Only edit target if it exists.
+        if (targetsInCamera < 1){
+            Debug.Log("There must be a target to edit!");
+            openMenuStatusText.text = "There must be a target to edit!";
+
+            return;
+        }
+
+        // Set current input fields to target profile data.
+        SetInputFields(editMenu, false);
+
+        texture = CameraImageAccess.GetLatestTexture();
+        rawImage.texture = texture;
+        rawImage.material.mainTexture = texture;
+
+        editMenu.SetActive(true);
 
         // Disable tracker.
         Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().Stop();
@@ -123,37 +189,44 @@ public class CloudUploading : CloudTrackableEventHandler
 
         if (!ValidateString(nameField.text)){
             Debug.Log("Validation failed for name field {" + nameField.text + "}");
+            // uploadStatusText.text = "Validation failed for name field {" + nameField.text + "}";
             isValid = false;
         }
 
         // Matches any pattern with numbers only.
         if (!ValidateString(ageField.text, @"^\d+$")){
             Debug.Log("Validation failed for age field {" + ageField.text + "}");
+            // uploadStatusText.text = "Validation failed for age field {" + ageField.text + "}";
             isValid = false;
         }
 
         if (!ValidateString(phoneField.text, @"^\d+$")){
             Debug.Log("Validation failed for phone field {" + phoneField.text + "}");
+            // uploadStatusText.text = "Validation failed for phone field {" + phoneField.text + "}";
             isValid = false;
         }
 
         if (!ValidateString(addressField.text)){
             Debug.Log("Validation failed for address field {" + addressField.text + "}");
+            // uploadStatusText.text = "Validation failed for address field {" + addressField.text + "}";
             isValid = false;
         }
 
         if (!ValidateString(icField.text, @"^\d+$")){
             Debug.Log("Validation failed for ic field {" + icField.text + "}");
+            // uploadStatusText.text = "Validation failed for ic field {" + icField.text + "}";
             isValid = false;
         }
 
         if (!ValidateString(occupationField.text)){
             Debug.Log("Validation failed for occupation field {" + occupationField.text + "}");
+            // uploadStatusText.text = "Validation failed for occupation field {" + occupationField.text + "}";
             isValid = false;
         }
 
         if (!ValidateString(biographyField.text)){
             Debug.Log("Validation failed for biography field {" + biographyField.text + "}");
+            // uploadStatusText.text = "Validation failed for biography field {" + biographyField.text + "}";
             isValid = false;
         }
 
@@ -162,12 +235,13 @@ public class CloudUploading : CloudTrackableEventHandler
 
     public void CallPostTarget(){
         if (texture == null){
-            Debug.Log("Cannot post empty image!");
+            Debug.Log("Empty image!");
             return;
         }
 
         if (VerifyUpload() == false){
             Debug.Log("Fields mandatory!");
+            uploadStatusText.text = "Fields mandatory!";
             return;
         }
 

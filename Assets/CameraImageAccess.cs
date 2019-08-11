@@ -22,13 +22,22 @@ public class CameraImageAccess : MonoBehaviour
  
     #region MONOBEHAVIOUR_METHODS
  
+    private void Awake(){
+        // OnPause(true);
+        // OnPause(false);
+    }
+
     void Start()
     {
 
         if (Instance == null){
             Instance = this;
+            Debug.Log("CustomMessage: Start CameraImageAccess");
         } else {
+            Debug.Log("CustomMessage: Destroy CameraImageAccess");
             Destroy(gameObject);
+
+            return;
         }
  
         #if UNITY_EDITOR
@@ -43,8 +52,14 @@ public class CameraImageAccess : MonoBehaviour
         VuforiaARController.Instance.RegisterVuforiaStartedCallback(OnVuforiaStarted);
         VuforiaARController.Instance.RegisterTrackablesUpdatedCallback(OnTrackablesUpdated);
         VuforiaARController.Instance.RegisterOnPauseCallback(OnPause);
- 
+
+        // Remove the pixel format (in case it was previously set); 
+        // note that we are passing "false" here
+        // OnPause(true);
+        // OnPause(false);
     }
+
+
  
     #endregion // MONOBEHAVIOUR_METHODS
  
@@ -136,7 +151,10 @@ public class CameraImageAccess : MonoBehaviour
     }
 
     public static Texture2D GetLatestTexture(){
+        Instance.RegisterFormat();
+
         Vuforia.Image image = CameraDevice.Instance.GetCameraImage(Instance.mPixelFormat);
+        Debug.Log("CustomMessage: Pixel format: " + Instance.mPixelFormat);
         Debug.Log("CustomMessage: Pixel count: " + image.Pixels.Length);
  
         if (image != null)
