@@ -12,7 +12,7 @@ using Vuforia;
 public class CloudTrackableEventHandler : DefaultTrackableEventHandler
 {
     #region PRIVATE_MEMBERS
-    CloudRecoBehaviour m_CloudRecoBehaviour;
+    protected CloudRecoBehaviour m_CloudRecoBehaviour;
     CloudContentManager2 m_CloudContentManager2;
     #endregion // PRIVATE_MEMBERS
 
@@ -78,7 +78,7 @@ public class CloudTrackableEventHandler : DefaultTrackableEventHandler
 
         base.OnTrackingLost();
 
-        if (m_CloudRecoBehaviour)
+        if (m_CloudRecoBehaviour && Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().IsActive)
         {
             // Changing CloudRecoBehaviour.CloudRecoEnabled to true will call TargetFinder.StartRecognition()
             // and also call all registered ICloudRecoEventHandler.OnStateChanged() with true.

@@ -6,23 +6,23 @@ using System.Security.Cryptography;
 using System.IO;
 using BestHTTP;
 
-[Serializable]
-public class VWSResponse
-{
-	public string result_code;
-	public string transaction_id;
-	public string target_id;
-	public VWSTargetRecord target_record;
-	public string[] similar_targets;
-	public string[] results;
-	public string status;
+// [Serializable]
+// public class VWSResponse
+// {
+// 	public string result_code;
+// 	public string transaction_id;
+// 	public string target_id;
+// 	public VWSTargetRecord target_record;
+// 	public string[] similar_targets;
+// 	public string[] results;
+// 	public string status;
 
 
-	public VWSResponse(string result_code)
-	{
-		this.result_code = result_code;
-	}
-}
+// 	public VWSResponse(string result_code)
+// 	{
+// 		this.result_code = result_code;
+// 	}
+// }
 
 [Serializable]
 public class VWSTargetSummary

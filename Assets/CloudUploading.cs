@@ -12,6 +12,7 @@ using UnityEngine.UI;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
+using UnityEngine.Networking;
 
 public class PostNewTrackableRequest
 {
@@ -21,21 +22,37 @@ public class PostNewTrackableRequest
     public string application_metadata;
 }
 
-[System.SerializableAttribute]
 public struct ProfileData {
     public string name;
     public string value;
 }
 
-[System.SerializableAttribute]
 public struct ProfileDataList {
     public ProfileData[] profileDatasArray;
+}
+
+[Serializable]
+public class VWSResponse
+{
+	public string result_code;
+	public string transaction_id;
+	public string target_id;
+	public VWSTargetRecord target_record;
+	public string[] similar_targets;
+	public string[] results;
+	public string status;
+
+
+	public VWSResponse(string result_code)
+	{
+		this.result_code = result_code;
+	}
 }
  
 public class CloudUploading : CloudTrackableEventHandler
 {
-    public Button uploadButton;
-    public Button postUploadButton;
+    public Button uploadButton, editButton;
+    public Button postUploadButton, putEditButton, deleteDeleteButton;
 
     public Texture2D texture;
     public RawImage rawImage;
@@ -62,7 +79,6 @@ public class CloudUploading : CloudTrackableEventHandler
     private byte[] requestBytesArray;
 
     public static int targetsInCamera;
-    public CloudContentManager2 cloudContentManager2;
 
     public static Vuforia.TargetFinder.CloudRecoSearchResult currentImageData;
 
@@ -71,6 +87,9 @@ public class CloudUploading : CloudTrackableEventHandler
     
         // By default, the camera loses track of an item during initialization.
         targetsInCamera = 1;
+
+        // Edit menu is only active when a target is active.
+        editMenu.SetActive(false);
     }
 
     public void ToggleUploadMenu()
@@ -79,8 +98,7 @@ public class CloudUploading : CloudTrackableEventHandler
         if (uploadMenu.activeSelf){
             uploadMenu.SetActive(false);
 
-            // Enable tracker.
-            Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().Start();
+            EnableCloudAndTracker(true);
 
             return;
         }
@@ -94,7 +112,7 @@ public class CloudUploading : CloudTrackableEventHandler
         }
 
         // Clear input fields.
-        SetInputFields(uploadMenu);
+        SetInputFields(uploadMenu, false);
 
         texture = CameraImageAccess.GetLatestTexture();
         rawImage.texture = texture;
@@ -102,8 +120,7 @@ public class CloudUploading : CloudTrackableEventHandler
 
         uploadMenu.SetActive(true);
 
-        // Disable tracker.
-        Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().Stop();
+        EnableCloudAndTracker(false);
     }
 
     private void SetInputFields(GameObject whichCanvas, bool clear = true){
@@ -118,6 +135,14 @@ public class CloudUploading : CloudTrackableEventHandler
         occupationField = profileFields[5];
         biographyField = profileFields[6];
 
+        nameField.text = "Van";
+        ageField.text = "18";
+        phoneField.text = "1";
+        addressField.text = "s";
+        icField.text = "24";
+        occupationField.text = "ssd";
+        biographyField.text = "ssds";
+
         if (clear){
             nameField.text = "";
             ageField.text = "";
@@ -130,10 +155,9 @@ public class CloudUploading : CloudTrackableEventHandler
         }
 
         // Fill input fields using current image's metadata.
-        if (currentImageData.MetaData.Length > 0){
+        if (currentImageData != null && currentImageData.MetaData.Length > 0){
             ProfileDataList profileDataList = JsonUtility.FromJson<ProfileDataList>(currentImageData.MetaData);
-
-            // Set currrent image to cloud image.
+            
             nameField.text = profileDataList.profileDatasArray[0].value;
             ageField.text = profileDataList.profileDatasArray[1].value;
             phoneField.text = profileDataList.profileDatasArray[2].value;
@@ -144,14 +168,36 @@ public class CloudUploading : CloudTrackableEventHandler
         }
     }
 
+    // By the way, if cloud is disabled, vuforia will use targets cached locally.
+    private void EnableCloudAndTracker(bool enable){
+        // Disable/Enable cloud.
+        m_CloudRecoBehaviour.CloudRecoEnabled = enable;
+
+        // Enable tracker.
+        if (enable){
+            Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().Start();
+        } else {
+            Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().Stop();
+        }
+    }
+
     public void ToggleEditMenu()
     {
         // Close upload menu if already open.
         if (editMenu.activeSelf){
             editMenu.SetActive(false);
 
-            // Enable tracker.
-            Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().Start();
+            // If no targets are active, enable upload button.
+            if (targetsInCamera == 0){
+                uploadButton.interactable = true;
+            }
+
+            // If no targets are active, disable edit button.
+            if (targetsInCamera == 0){
+                editButton.interactable = false;
+            }
+
+            EnableCloudAndTracker(true);
 
             return;
         }
@@ -173,8 +219,7 @@ public class CloudUploading : CloudTrackableEventHandler
 
         editMenu.SetActive(true);
 
-        // Disable tracker.
-        Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().Stop();
+        EnableCloudAndTracker(false);
     }
 
     // Default pattern: Starts with any letter.
@@ -233,7 +278,7 @@ public class CloudUploading : CloudTrackableEventHandler
         return isValid;
     }
 
-    public void CallPostTarget(){
+    public void CallPutTarget(){
         if (texture == null){
             Debug.Log("Empty image!");
             return;
@@ -245,11 +290,31 @@ public class CloudUploading : CloudTrackableEventHandler
             return;
         }
 
-        postUploadButton.interactable = false;
-        uploadStatusText.text = "Uploading...";
+        deleteDeleteButton.interactable = false;
+        putEditButton.interactable = false;
+        uploadStatusText.text = "Saving...";
 
         targetName = nameField.text;
 
+        // Generate list of ProfileData.
+        ProfileDataList profileDatas = GenerateDataFromMetadata();
+
+        // Convert to json to transfer data as metadata
+        jsonData = JsonUtility.ToJson(profileDatas);
+
+        // Update image too.
+        StartCoroutine(PutUpdateTarget(true));
+    }
+
+    public void CallDeleteTarget(){
+        deleteDeleteButton.interactable = false;
+        putEditButton.interactable = false;
+        uploadStatusText.text = "Deleting...";
+
+        StartCoroutine(DeleteTarget());
+    }
+
+    private ProfileDataList GenerateDataFromMetadata(){
         // Generate list of ProfileData.
         ProfileDataList profileDatas = new ProfileDataList{
             profileDatasArray = new ProfileData[7]
@@ -291,6 +356,29 @@ public class CloudUploading : CloudTrackableEventHandler
         biographyData.value = biographyField.text;
         profileDatas.profileDatasArray[6] = biographyData;
 
+        return profileDatas;
+    }
+
+    public void CallPostTarget(){
+        if (texture == null){
+            Debug.Log("Empty image!");
+            return;
+        }
+
+        if (VerifyUpload() == false){
+            Debug.Log("Fields mandatory!");
+            uploadStatusText.text = "Fields mandatory!";
+            return;
+        }
+
+        postUploadButton.interactable = false;
+        uploadStatusText.text = "Uploading...";
+
+        targetName = nameField.text;
+
+        // Generate list of ProfileData.
+        ProfileDataList profileDatas = GenerateDataFromMetadata();
+
         // Convert to json to transfer data as metadata
         jsonData = JsonUtility.ToJson(profileDatas);
 
@@ -309,6 +397,10 @@ public class CloudUploading : CloudTrackableEventHandler
             uploadButton.interactable = false;
         }
 
+        if (!editMenu.activeSelf){
+            editButton.interactable = true;
+        }
+
         targetsInCamera += 1;
         Debug.Log(string.Format("Targets found: {0}", targetsInCamera));
     }
@@ -317,13 +409,25 @@ public class CloudUploading : CloudTrackableEventHandler
         base.OnTrackingLost();
 
         targetsInCamera -= 1;
-        if (targetsInCamera == 0){
-            uploadButton.interactable = true;
+
+        // If the edit menu is inactive.
+        if (!editMenu.activeSelf){
+
+            // If no targets are active, enable upload button.
+            if (targetsInCamera == 0){
+                uploadButton.interactable = true;
+            }
+
+            // If no targets are active, disable edit button.
+            if (targetsInCamera == 0){
+                editButton.interactable = false;
+            }
         }
 
         Debug.Log(string.Format("Targets lost: {0}", targetsInCamera));
     }
     
+    // https://library.vuforia.com/articles/Solution/How-To-Use-the-Vuforia-Web-Services-API.htm#How-To-Add-a-Target
     IEnumerator PostNewTarget()
     {
         Debug.Log("CustomMessage: PostNewTarget()");
@@ -353,7 +457,6 @@ public class CloudUploading : CloudTrackableEventHandler
         // model.image = "iVBORw0KGgoAAAANSUhEUgAAAoAAAAHgCAIAAAC6s0uzAAATWElEQVR4Ae3VwQkAIAwEQbX/niM24X4mDRwMgd0zsxwBAgQIECDwV+D8nbNGgAABAgQIPAEB9gcECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBC4/agGvRypoyYAAAAASUVORK5CYII=";
 
         model.application_metadata = System.Convert.ToBase64String(metadata);
-        //string requestBody = JsonWriter.Serialize(model);
         string requestBody = JsonUtility.ToJson(model);
 
         // print(requestBody);
@@ -408,8 +511,8 @@ public class CloudUploading : CloudTrackableEventHandler
         {
             Debug.Log("request error: " + request.error);
 
-            string errorText = request.error == "403 Forbidden" ? "Name already exists" : request.error;
-            uploadStatusText.text = errorText;
+            string result_code = JsonUtility.FromJson<VWSResponse>(request.text).result_code;
+            uploadStatusText.text = "Error: " + result_code;
         }
         else
         {
@@ -423,4 +526,223 @@ public class CloudUploading : CloudTrackableEventHandler
 
         postUploadButton.interactable = true;
     }
+
+    // https://library.vuforia.com/articles/Solution/How-To-Use-the-Vuforia-Web-Services-API.htm#How-To-Update-a-Target
+    IEnumerator PutUpdateTarget(bool updateImage = false)
+    {
+        Debug.Log("CustomMessage: PutUpdateTarget()");
+    
+        // Setting up query.
+        string requestPath = "/targets/" + currentImageData.UniqueTargetId;
+        string serviceURI = url + requestPath;
+        string httpAction = "PUT";
+        string contentType = "application/json";
+        string date = string.Format("{0:r}", DateTime.Now.ToUniversalTime());
+
+        string metadataStr = jsonData;
+        byte[] metadata = System.Text.ASCIIEncoding.ASCII.GetBytes(metadataStr);
+
+        // Create new model to prepare for sending.
+        PostNewTrackableRequest model = new PostNewTrackableRequest();
+        model.name = targetName;
+        model.width = 64.0f;
+        model.application_metadata = System.Convert.ToBase64String(metadata);
+
+        if (updateImage){
+            // Create texture and encode pixels to base64.
+            Texture2D tex = new Texture2D(texture.width,texture.height,TextureFormat.RGB24,false);
+            tex.SetPixels(texture.GetPixels());
+            tex.Apply();
+            byte[] image = tex.EncodeToPNG();
+
+            model.image = System.Convert.ToBase64String(image);
+        }
+
+        // Convert model to json.
+        string requestBody = JsonUtility.ToJson(model);
+
+        // Create ContentMD5.
+        MD5 md5 = MD5.Create();
+        var contentMD5bytes = md5.ComputeHash(System.Text.Encoding.ASCII.GetBytes(requestBody));
+        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+        for (int i = 0; i < contentMD5bytes.Length; i++)
+        {
+            sb.Append(contentMD5bytes[i].ToString("x2"));
+        }
+    
+        string contentMD5 = sb.ToString();
+        string stringToSign = string.Format("{0}\n{1}\n{2}\n{3}\n{4}", httpAction, contentMD5, contentType, date, requestPath);
+    
+        // Build signature.
+        HMACSHA1 sha1 = new HMACSHA1(System.Text.Encoding.ASCII.GetBytes(secret_key));
+        byte[] sha1Bytes = System.Text.Encoding.ASCII.GetBytes(stringToSign);
+        MemoryStream stream = new MemoryStream(sha1Bytes);
+        byte[] sha1Hash = sha1.ComputeHash(stream);
+        string signature = System.Convert.ToBase64String(sha1Hash);
+    
+        Debug.Log("<color=green>Signature: "+signature+"</color>");        
+
+        // Build Http Request.
+        BestHTTP.HTTPRequest request = new BestHTTP.HTTPRequest(new Uri(serviceURI));
+
+        request.MethodType = BestHTTP.HTTPMethods.Put;
+		request.RawData = Encoding.UTF8.GetBytes(requestBody);
+		request.AddHeader("Authorization", string.Format("VWS {0}:{1}", access_key, signature));
+		request.AddHeader("Content-Type", contentType);
+		request.AddHeader("Date", date);
+        request.Send();
+        
+        yield return StartCoroutine(request);
+    
+        switch(request.State){
+
+            case BestHTTP.HTTPRequestStates.Error:
+            
+                Debug.Log("request error: " + request.Exception.Message);
+
+                string errorText = request.Exception.Message;
+                uploadStatusText.text = "Exception: " + errorText;
+
+                break;
+            
+            case BestHTTP.HTTPRequestStates.Finished:
+            
+                // There is an error
+                if (request.Response.StatusCode != 200){
+                    Debug.Log("request error: " + request.Response.Message);
+                    
+                    string result_code = JsonUtility.FromJson<VWSResponse>(request.Response.DataAsText).result_code;
+                    uploadStatusText.text = "Error: " + result_code;
+                } else {
+                    Debug.Log("request success");
+                    uploadStatusText.text = "Saved!";
+                    
+                    // Close edit menu.
+                    ToggleEditMenu();
+                }
+
+                break;
+        }
+
+        // Enable buttons.
+        deleteDeleteButton.interactable = true;
+        putEditButton.interactable = true;
+    }
+
+    IEnumerator DeleteTarget(){
+        Debug.Log("CustomMessage: DeleteTarget()");
+    
+        // Setting up query.
+        string requestPath = "/targets/" + currentImageData.UniqueTargetId;
+        string serviceURI = url + requestPath;
+        string httpAction = "DELETE";
+        string contentType = "";
+        string date = string.Format("{0:r}", DateTime.Now.ToUniversalTime());
+
+        // Create ContentMD5.
+        MD5 md5 = MD5.Create();
+        var contentMD5bytes = md5.ComputeHash(System.Text.Encoding.ASCII.GetBytes(""));
+        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+        for (int i = 0; i < contentMD5bytes.Length; i++)
+        {
+            sb.Append(contentMD5bytes[i].ToString("x2"));
+        }
+    
+        string contentMD5 = sb.ToString();
+        string stringToSign = string.Format("{0}\n{1}\n{2}\n{3}\n{4}", httpAction, contentMD5, contentType, date, requestPath);
+    
+        // Build signature.
+        HMACSHA1 sha1 = new HMACSHA1(System.Text.Encoding.ASCII.GetBytes(secret_key));
+        byte[] sha1Bytes = System.Text.Encoding.ASCII.GetBytes(stringToSign);
+        MemoryStream stream = new MemoryStream(sha1Bytes);
+        byte[] sha1Hash = sha1.ComputeHash(stream);
+        string signature = System.Convert.ToBase64String(sha1Hash);
+    
+        Debug.Log("<color=green>Signature: "+signature+"</color>");        
+
+        // Build Http Request.
+        BestHTTP.HTTPRequest request = new BestHTTP.HTTPRequest(new Uri(serviceURI));
+
+        request.MethodType = BestHTTP.HTTPMethods.Delete;
+		request.RawData = Encoding.UTF8.GetBytes("");
+		request.AddHeader("Authorization", string.Format("VWS {0}:{1}", access_key, signature));
+		request.AddHeader("Content-Type", contentType);
+		request.AddHeader("Date", date);
+        request.Send();
+        
+        yield return StartCoroutine(request);
+    
+        switch(request.State){
+
+            case BestHTTP.HTTPRequestStates.Error:
+            
+                Debug.Log("request error: " + request.Exception.Message);
+
+                string errorText = request.Exception.Message;
+                uploadStatusText.text = "Exception: " + errorText;
+
+                break;
+            
+            case BestHTTP.HTTPRequestStates.Finished:
+            
+                // There is an error
+                if (request.Response.StatusCode != 200){
+                    Debug.Log("request error: " + request.Response.Message);
+                    
+                    string result_code = JsonUtility.FromJson<VWSResponse>(request.Response.DataAsText).result_code;
+                    uploadStatusText.text = "Error: " + result_code;
+                } else {
+                    Debug.Log("request success");
+                    uploadStatusText.text = "Deleted!";
+                    
+                    // Close edit menu.
+                    ToggleEditMenu();
+                }
+
+                break;
+        }
+        
+        // Enable buttons.
+        deleteDeleteButton.interactable = true;
+        putEditButton.interactable = true;
+    }
+
+    // void PutUpdateTarget()
+    // {
+    //     Debug.Log("CustomMessage: PutUpdateTarget()");
+    
+    //     string requestPath = "/targets" + currentImageData.UniqueTargetId;
+    //     string serviceURI = url + requestPath;
+    //     string httpAction = "PUT";
+    //     string contentType = "application/json";
+    //     string date = string.Format("{0:r}", DateTime.Now.ToUniversalTime());
+    
+    //     // if your texture2d has RGb24 type, don't need to redraw new texture2d
+    //     Texture2D tex = new Texture2D(texture.width,texture.height,TextureFormat.RGB24,false);
+    //     tex.SetPixels(texture.GetPixels());
+    //     tex.Apply();
+    //     byte[] image = tex.EncodeToPNG();
+
+    //     string metadataStr = jsonData;
+    //     byte[] metadata = System.Text.ASCIIEncoding.ASCII.GetBytes(metadataStr);
+    //     PostNewTrackableRequest model = new PostNewTrackableRequest();
+    //     model.name = targetName;
+    //     model.width = 64.0f; // don't need same as width of texture
+    //     model.image = System.Convert.ToBase64String(image);
+        
+    //     model.application_metadata = System.Convert.ToBase64String(metadata);
+    //     string requestBody = JsonUtility.ToJson(model);
+
+    //     VWS.Instance.UpdateTarget(currentImageData.UniqueTargetId, currentImageData.TargetName, 64, tex, true, metadataStr, resp => {
+    //         Debug.Log(resp.result_code);
+    //         if (resp.result_code == "Success"){
+    //             uploadStatusText.text = "Saved!";
+    //             ToggleEditMenu();
+    //         } else {
+    //             uploadStatusText.text = resp.result_code;
+    //         }
+    //     });
+
+    //     postUploadButton.interactable = true;
+    // }
 }

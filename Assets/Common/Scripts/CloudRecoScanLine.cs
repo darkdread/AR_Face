@@ -23,6 +23,7 @@ public class CloudRecoScanLine : MonoBehaviour
     {
         get { return m_CloudRecoBehaviour && m_CloudRecoBehaviour.CloudRecoEnabled; }
     }
+    bool TrackerEnabled { get { return Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().IsActive; }}
     #endregion //PRIVATE_MEMBERS
 
     #region MONOBEHAVIOUR_METHODS
@@ -49,6 +50,7 @@ public class CloudRecoScanLine : MonoBehaviour
         }
 
         m_Renderer.enabled = CloudEnabled; // show/hide scanline
+        // print(CloudEnabled);
 
         if (CloudEnabled)
         {
