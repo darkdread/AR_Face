@@ -83,6 +83,7 @@ public class CloudUploading : CloudTrackableEventHandler
     public InputField biographyField;
 
     public CloudContentManager cloudContentManager;
+    public UDTEventHandler userDefinedTargetHandler;
 
     private string jsonData;
     
@@ -92,6 +93,7 @@ public class CloudUploading : CloudTrackableEventHandler
     private string targetName = "Face_1"; // must change when upload another Image Target, avoid same as exist Image on cloud
 
     private byte[] requestBytesArray;
+    private bool forceTrackerDisabledSeconds;
 
     public static int targetsInCamera;
 
@@ -126,6 +128,15 @@ public class CloudUploading : CloudTrackableEventHandler
             return;
         }
 
+        // Only post target if camera quality is medium or high.
+        if (userDefinedTargetHandler.m_FrameQuality != Vuforia.ImageTargetBuilder.FrameQuality.FRAME_QUALITY_MEDIUM && 
+            userDefinedTargetHandler.m_FrameQuality != Vuforia.ImageTargetBuilder.FrameQuality.FRAME_QUALITY_HIGH){
+            Debug.Log("Camera frame quality: " + userDefinedTargetHandler.m_FrameQuality);
+            openMenuStatusText.text = "Camera frame must be in medium or high quality!";
+
+            return;
+        }
+
         // Clear input fields.
         SetInputFields(uploadMenu, true);
 
@@ -150,13 +161,13 @@ public class CloudUploading : CloudTrackableEventHandler
         occupationField = profileFields[5];
         biographyField = profileFields[6];
 
-        nameField.text = "Van";
-        ageField.text = "18";
-        phoneField.text = "1";
-        addressField.text = "s";
-        icField.text = "24";
-        occupationField.text = "ssd";
-        biographyField.text = "ssds";
+        // nameField.text = "Van";
+        // ageField.text = "18";
+        // phoneField.text = "1";
+        // addressField.text = "s";
+        // icField.text = "24";
+        // occupationField.text = "ssd";
+        // biographyField.text = "ssds";
 
         if (clear){
             nameField.text = "";
@@ -185,12 +196,23 @@ public class CloudUploading : CloudTrackableEventHandler
 
     // By the way, if cloud is disabled, vuforia will use targets cached locally.
     private void EnableCloudAndTracker(bool enable){
+        if (forceTrackerDisabledSeconds){
+            if (enable){
+                Debug.Log("Trying to enable cloud and tracker, but it is forced to be disabled.");
+            }
+            return;
+        }
+
         // Disable/Enable cloud.
         m_CloudRecoBehaviour.CloudRecoEnabled = enable;
 
         // Enable tracker.
         if (enable){
             Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().Start();
+
+            // Enable the image target builder again. It gets disabled when the object tracker stops. This is
+            // used to send current camera frame quality down.
+            Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().ImageTargetBuilder.StartScan();
         } else {
             Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().Stop();
         }
@@ -249,45 +271,52 @@ public class CloudUploading : CloudTrackableEventHandler
 
         if (!ValidateString(nameField.text)){
             Debug.Log("Validation failed for name field {" + nameField.text + "}");
-            // uploadStatusText.text = "Validation failed for name field {" + nameField.text + "}";
-            isValid = false;
+            uploadStatusText.text = "Validation failed for name field!";
+            // isValid = false;
+            return false;
         }
 
         // Matches any pattern with numbers only.
         if (!ValidateString(ageField.text, @"^\d+$")){
             Debug.Log("Validation failed for age field {" + ageField.text + "}");
-            // uploadStatusText.text = "Validation failed for age field {" + ageField.text + "}";
-            isValid = false;
+            uploadStatusText.text = "Validation failed for age field!";
+            // isValid = false;
+            return false;
         }
 
         if (!ValidateString(phoneField.text, @"^\d+$")){
             Debug.Log("Validation failed for phone field {" + phoneField.text + "}");
-            // uploadStatusText.text = "Validation failed for phone field {" + phoneField.text + "}";
-            isValid = false;
+            uploadStatusText.text = "Validation failed for phone field!";
+            // isValid = false;
+            return false;
         }
 
         if (!ValidateString(addressField.text)){
             Debug.Log("Validation failed for address field {" + addressField.text + "}");
-            // uploadStatusText.text = "Validation failed for address field {" + addressField.text + "}";
-            isValid = false;
+            uploadStatusText.text = "Validation failed for address field!";
+            // isValid = false;
+            return false;
         }
 
         if (!ValidateString(icField.text, @"^\d+$")){
             Debug.Log("Validation failed for ic field {" + icField.text + "}");
-            // uploadStatusText.text = "Validation failed for ic field {" + icField.text + "}";
-            isValid = false;
+            uploadStatusText.text = "Validation failed for ic field!";
+            // isValid = false;
+            return false;
         }
 
         if (!ValidateString(occupationField.text)){
             Debug.Log("Validation failed for occupation field {" + occupationField.text + "}");
-            // uploadStatusText.text = "Validation failed for occupation field {" + occupationField.text + "}";
-            isValid = false;
+            uploadStatusText.text = "Validation failed for occupation field!";
+            // isValid = false;
+            return false;
         }
 
         if (!ValidateString(biographyField.text)){
             Debug.Log("Validation failed for biography field {" + biographyField.text + "}");
-            // uploadStatusText.text = "Validation failed for biography field {" + biographyField.text + "}";
-            isValid = false;
+            uploadStatusText.text = "Validation failed for biography field!";
+            // isValid = false;
+            return false;
         }
 
         return isValid;
@@ -300,8 +329,15 @@ public class CloudUploading : CloudTrackableEventHandler
         }
 
         if (VerifyUpload() == false){
-            Debug.Log("Fields mandatory!");
-            uploadStatusText.text = "Fields mandatory!";
+            return;
+        }
+
+        // Only update target if camera quality is medium or high.
+        if (userDefinedTargetHandler.m_FrameQuality != Vuforia.ImageTargetBuilder.FrameQuality.FRAME_QUALITY_MEDIUM && 
+            userDefinedTargetHandler.m_FrameQuality != Vuforia.ImageTargetBuilder.FrameQuality.FRAME_QUALITY_HIGH){
+            Debug.Log("Camera frame quality: " + userDefinedTargetHandler.m_FrameQuality);
+            openMenuStatusText.text = "Camera frame must be in medium or high quality!";
+
             return;
         }
 
@@ -381,8 +417,6 @@ public class CloudUploading : CloudTrackableEventHandler
         }
 
         if (VerifyUpload() == false){
-            Debug.Log("Fields mandatory!");
-            uploadStatusText.text = "Fields mandatory!";
             return;
         }
 
@@ -454,9 +488,7 @@ public class CloudUploading : CloudTrackableEventHandler
         string contentType = "application/json";
         string date = string.Format("{0:r}", DateTime.Now.ToUniversalTime());
 
-        // texture = RTImage(Camera.main);
-        // texture = CameraImageAccess.texture;
-    
+
         Texture2D tex = new Texture2D(texture.width,texture.height,TextureFormat.RGB24,false);
         tex.SetPixels(texture.GetPixels());
         tex.Apply();
@@ -469,12 +501,9 @@ public class CloudUploading : CloudTrackableEventHandler
         model.name = targetName;
         model.width = 64.0f; // don't need same as width of texture
         model.image = System.Convert.ToBase64String(image);
-        // model.image = "iVBORw0KGgoAAAANSUhEUgAAAoAAAAHgCAIAAAC6s0uzAAATWElEQVR4Ae3VwQkAIAwEQbX/niM24X4mDRwMgd0zsxwBAgQIECDwV+D8nbNGgAABAgQIPAEB9gcECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBAQYD9AgAABAgQCAQEO0E0SIECAAAEB9gMECBAgQCAQEOAA3SQBAgQIEBBgP0CAAAECBAIBAQ7QTRIgQIAAAQH2AwQIECBAIBAQ4ADdJAECBAgQEGA/QIAAAQIEAgEBDtBNEiBAgAABAfYDBAgQIEAgEBDgAN0kAQIECBC4/agGvRypoyYAAAAASUVORK5CYII=";
-
         model.application_metadata = System.Convert.ToBase64String(metadata);
+        
         string requestBody = JsonUtility.ToJson(model);
-
-        // print(requestBody);
     
         WWWForm form = new WWWForm ();
     
@@ -483,9 +512,7 @@ public class CloudUploading : CloudTrackableEventHandler
         headers["host"]= url;
         headers["date"] = date;
         headers["Content-Type"]= contentType;
-    
-        HttpWebRequest httpWReq = (HttpWebRequest)HttpWebRequest.Create(serviceURI);
-    
+
         MD5 md5 = MD5.Create();
         var contentMD5bytes = md5.ComputeHash(System.Text.Encoding.ASCII.GetBytes(requestBody));
         System.Text.StringBuilder sb = new System.Text.StringBuilder();
@@ -495,12 +522,7 @@ public class CloudUploading : CloudTrackableEventHandler
         }
     
         string contentMD5 = sb.ToString();
-    
         string stringToSign = string.Format("{0}\n{1}\n{2}\n{3}\n{4}", httpAction, contentMD5, contentType, date, requestPath);
-
-        // string stringToSign = string.Format("{0}\n{1}\n{2}\n{3}", httpAction, contentMD5, contentType, requestPath);
-
-        // print(stringToSign);
     
         HMACSHA1 sha1 = new HMACSHA1(System.Text.Encoding.ASCII.GetBytes(secret_key));
         byte[] sha1Bytes = System.Text.Encoding.ASCII.GetBytes(stringToSign);
@@ -515,9 +537,6 @@ public class CloudUploading : CloudTrackableEventHandler
         foreach(System.Collections.Generic.KeyValuePair<string, string> kvp in headers){
             print(string.Format("{0}: {1}", kvp.Key, kvp.Value));
         }
-
-        // print(headers);
-        // yield break;
     
         WWW request = new WWW(serviceURI, System.Text.Encoding.UTF8.GetBytes(requestBody), headers);
         yield return request;
@@ -641,7 +660,11 @@ public class CloudUploading : CloudTrackableEventHandler
 
                     // The only issue with this method is we do not know the new tracking rating of the copy.
                     // However, since our version of profiler does not show tracking rating, it should work fine.
-                    // currentImageData.TrackingRating = ?
+
+                    // Also, if the new image fails the processor on Vuforia's side, it wouldn't make sense to
+                    // change the local copy's data. However, it would be more convenient for the user to see
+                    // the new updated version. Therefore, when changing the local copy, we are assuming the
+                    // new image to be processed successfully.
                     
                     // Close edit menu.
                     ToggleEditMenu();
@@ -720,7 +743,26 @@ public class CloudUploading : CloudTrackableEventHandler
                 } else {
                     Debug.Log("request success");
                     uploadStatusText.text = "Deleted!";
+
+                    // We disable cloud tracking for x seconds. The reason why we do this is because it takes time for
+                    // Vuforia to actually delete the record. If we continue cloud tracking, it would retrack the record.
+                    DisableCloudTracking(2f);
+
+                    // To get all the tracked targets. For testing.
+                    // IEnumerable<Vuforia.ObjectTarget> obj = Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().GetTargetFinder<Vuforia.ImageTargetFinder>().GetObjectTargets();
+                    // IEnumerator myEnum = obj.GetEnumerator();
+
+                    // while(myEnum.MoveNext()){
+                    //     print(myEnum.Current);
+                    // }
+
+                    // Clear local copy.
+                    // This only works for laptop, fails to work on my mobile.
+                    Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().GetTargetFinder<Vuforia.ImageTargetFinder>().ClearTrackables(false);
                     
+                    // Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().GetTargetFinder<Vuforia.ImageTargetFinder>().Stop();
+                    // Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().GetTargetFinder<Vuforia.ImageTargetFinder>().StartRecognition();
+
                     // Close edit menu.
                     ToggleEditMenu();
                 }
@@ -731,6 +773,19 @@ public class CloudUploading : CloudTrackableEventHandler
         // Enable buttons.
         deleteDeleteButton.interactable = true;
         putEditButton.interactable = true;
+    }
+
+    public void DisableCloudTracking(float seconds){
+        IEnumerator myEnum = PauseTracking(seconds);
+        StartCoroutine(myEnum);
+    }
+
+    IEnumerator PauseTracking(float seconds){
+        forceTrackerDisabledSeconds = true;
+        EnableCloudAndTracker(false);
+        yield return new WaitForSecondsRealtime(seconds);
+        forceTrackerDisabledSeconds = false;
+        EnableCloudAndTracker(true);
     }
 
     // void PutUpdateTarget()

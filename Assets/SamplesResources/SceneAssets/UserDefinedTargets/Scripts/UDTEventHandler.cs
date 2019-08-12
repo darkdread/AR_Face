@@ -37,7 +37,7 @@ public class UDTEventHandler : MonoBehaviour, IUserDefinedTargetEventHandler
     DataSet m_UDT_DataSet;
 
     // Currently observed frame quality
-    ImageTargetBuilder.FrameQuality m_FrameQuality = ImageTargetBuilder.FrameQuality.FRAME_QUALITY_NONE;
+    public ImageTargetBuilder.FrameQuality m_FrameQuality = ImageTargetBuilder.FrameQuality.FRAME_QUALITY_NONE;
 
     // Counter used to name newly created targets
     int m_TargetCounter;
