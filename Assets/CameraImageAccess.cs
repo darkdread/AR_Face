@@ -25,6 +25,8 @@ public class CameraImageAccess : MonoBehaviour
     private void Awake(){
         // OnPause(true);
         // OnPause(false);
+        // CameraDevice.Instance.Deinit();
+        // CameraDevice.Instance.Init();
     }
 
     void Start()
@@ -54,7 +56,7 @@ public class CameraImageAccess : MonoBehaviour
         VuforiaARController.Instance.RegisterOnPauseCallback(OnPause);
 
         // Remove the pixel format (in case it was previously set); 
-        // note that we are passing "false" here
+        // note that we are passing "false" here.
         // OnPause(true);
         // OnPause(false);
     }
@@ -167,7 +169,6 @@ public class CameraImageAccess : MonoBehaviour
 
             texture = RotateTexture(texture);
             FlipTexture(texture, false);
-            // texture = FlipTexture(texture);
             // rawImage.texture = texture;
             // rawImage.material.mainTexture = texture;
 

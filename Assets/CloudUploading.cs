@@ -22,11 +22,13 @@ public class PostNewTrackableRequest
     public string application_metadata;
 }
 
+[SerializableAttribute]
 public struct ProfileData {
     public string name;
     public string value;
 }
 
+[SerializableAttribute]
 public struct ProfileDataList {
     public ProfileData[] profileDatasArray;
 }
@@ -297,7 +299,7 @@ public class CloudUploading : CloudTrackableEventHandler
         targetName = nameField.text;
 
         // Generate list of ProfileData.
-        ProfileDataList profileDatas = GenerateDataFromMetadata();
+        ProfileDataList profileDatas = GenerateDataFromFields();
 
         // Convert to json to transfer data as metadata
         jsonData = JsonUtility.ToJson(profileDatas);
@@ -314,7 +316,7 @@ public class CloudUploading : CloudTrackableEventHandler
         StartCoroutine(DeleteTarget());
     }
 
-    private ProfileDataList GenerateDataFromMetadata(){
+    private ProfileDataList GenerateDataFromFields(){
         // Generate list of ProfileData.
         ProfileDataList profileDatas = new ProfileDataList{
             profileDatasArray = new ProfileData[7]
@@ -377,10 +379,11 @@ public class CloudUploading : CloudTrackableEventHandler
         targetName = nameField.text;
 
         // Generate list of ProfileData.
-        ProfileDataList profileDatas = GenerateDataFromMetadata();
+        ProfileDataList profileDatas = GenerateDataFromFields();
 
         // Convert to json to transfer data as metadata
         jsonData = JsonUtility.ToJson(profileDatas);
+        print(jsonData);
 
         StartCoroutine (PostNewTarget());
     }
@@ -441,7 +444,6 @@ public class CloudUploading : CloudTrackableEventHandler
         // texture = RTImage(Camera.main);
         // texture = CameraImageAccess.texture;
     
-        // if your texture2d has RGb24 type, don't need to redraw new texture2d
         Texture2D tex = new Texture2D(texture.width,texture.height,TextureFormat.RGB24,false);
         tex.SetPixels(texture.GetPixels());
         tex.Apply();
@@ -616,6 +618,13 @@ public class CloudUploading : CloudTrackableEventHandler
                 } else {
                     Debug.Log("request success");
                     uploadStatusText.text = "Saved!";
+
+                    // Since the image is saved to the cloud, we can change the local copy.
+                    currentImageData.MetaData = metadataStr;
+                    currentImageData.TargetName = targetName;
+
+                    // The only issue with this method is we do not know the new tracking rating of the copy.
+                    // currentImageData.TrackingRating
                     
                     // Close edit menu.
                     ToggleEditMenu();
@@ -701,7 +710,7 @@ public class CloudUploading : CloudTrackableEventHandler
 
                 break;
         }
-        
+
         // Enable buttons.
         deleteDeleteButton.interactable = true;
         putEditButton.interactable = true;
