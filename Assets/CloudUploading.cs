@@ -50,6 +50,17 @@ public class VWSResponse
 		this.result_code = result_code;
 	}
 }
+
+[Serializable]
+public class VWSTargetRecord
+{
+	public string target_id;
+	public string name;
+	public float width;
+	public int tracking_rating;
+	public bool active_flag;
+	public string reco_rating;
+}
  
 public class CloudUploading : CloudTrackableEventHandler
 {
@@ -70,6 +81,8 @@ public class CloudUploading : CloudTrackableEventHandler
     public InputField icField;
     public InputField occupationField;
     public InputField biographyField;
+
+    public CloudContentManager cloudContentManager;
 
     private string jsonData;
     
@@ -114,7 +127,7 @@ public class CloudUploading : CloudTrackableEventHandler
         }
 
         // Clear input fields.
-        SetInputFields(uploadMenu, false);
+        SetInputFields(uploadMenu, true);
 
         texture = CameraImageAccess.GetLatestTexture();
         rawImage.texture = texture;
@@ -623,8 +636,12 @@ public class CloudUploading : CloudTrackableEventHandler
                     currentImageData.MetaData = metadataStr;
                     currentImageData.TargetName = targetName;
 
+                    // Force update of target info.
+                    cloudContentManager.HandleTargetFinderResult(currentImageData);
+
                     // The only issue with this method is we do not know the new tracking rating of the copy.
-                    // currentImageData.TrackingRating
+                    // However, since our version of profiler does not show tracking rating, it should work fine.
+                    // currentImageData.TrackingRating = ?
                     
                     // Close edit menu.
                     ToggleEditMenu();

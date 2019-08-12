@@ -13,7 +13,7 @@ public class CloudTrackableEventHandler : DefaultTrackableEventHandler
 {
     #region PRIVATE_MEMBERS
     protected CloudRecoBehaviour m_CloudRecoBehaviour;
-    CloudContentManager2 m_CloudContentManager2;
+    CloudContentManager m_CloudContentManager2;
     #endregion // PRIVATE_MEMBERS
 
 
@@ -23,7 +23,7 @@ public class CloudTrackableEventHandler : DefaultTrackableEventHandler
         base.Start();
 
         m_CloudRecoBehaviour = FindObjectOfType<CloudRecoBehaviour>();
-        m_CloudContentManager2 = FindObjectOfType<CloudContentManager2>();
+        m_CloudContentManager2 = FindObjectOfType<CloudContentManager>();
     }
     #endregion // MONOBEHAVIOUR_METHODS
 

@@ -9,7 +9,7 @@ public class MenuController : MonoBehaviour
     public GameObject instructionsScreen;
 
     public void StartApp(){
-        SceneManager.LoadScene("Face");
+        SceneManager.LoadScene("Analyzer");
     }
 
     public void ShowMainMenu(){

@@ -7,7 +7,7 @@ countries.
 using System.Collections.Generic;
 using UnityEngine;
 
-public class CloudContentManager2 : MonoBehaviour
+public class CloudContentManager : MonoBehaviour
 {
 
     #region PRIVATE_MEMBER_VARIABLES
@@ -40,12 +40,6 @@ public class CloudContentManager2 : MonoBehaviour
     {
         Debug.Log("<color=blue>HandleTargetFinderResult(): " + targetSearchResult.TargetName + "</color>");
         CloudUploading.currentImageData = targetSearchResult;
-
-        // cloudTargetInfo.text =
-        //     "Name: " + targetSearchResult.TargetName +
-        //     "\nRating: " + starRatings[targetSearchResult.TrackingRating] +
-        //     "\nMetaData: " + ((targetSearchResult.MetaData.Length > 0) ? targetSearchResult.MetaData : "No") +
-        //     "\nTarget Id: " + targetSearchResult.UniqueTargetId;
 
         if (targetSearchResult.MetaData.Length > 0){
             ProfileDataList profileDataList = JsonUtility.FromJson<ProfileDataList>(targetSearchResult.MetaData);
