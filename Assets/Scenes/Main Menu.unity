@@ -360,8 +360,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 16.2, y: -17.7}
-  m_SizeDelta: {x: 581.9, y: 454.8}
+  m_AnchoredPosition: {x: 16.2, y: -9.1}
+  m_SizeDelta: {x: 581.9, y: 917.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &239233323
 MonoBehaviour:
@@ -385,10 +385,10 @@ MonoBehaviour:
       Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
   m_FontData:
     m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
-    m_FontSize: 50
+    m_FontSize: 45
     m_FontStyle: 0
     m_BestFit: 0
-    m_MinSize: 5
+    m_MinSize: 4
     m_MaxSize: 91
     m_Alignment: 0
     m_AlignByGeometry: 0
@@ -401,7 +401,16 @@ MonoBehaviour:
     P1747773 Class 1
 
 
-    Icons: https://assetstore.unity.com/packages/templates/packs/vuforia-core-samples-99026'
+    Icons: https://assetstore.unity.com/packages/templates/packs/vuforia-core-samples-99026
+
+
+    Logo: https://www.privateinvestigatorlicense.org
+
+
+    Logo Font: https://fonts.google.com/specimen/Share+Tech+Mono
+
+
+'
 --- !u!222 &239233324
 CanvasRenderer:
   m_ObjectHideFlags: 0

@@ -67,6 +67,8 @@ public class CloudUploading : CloudTrackableEventHandler
     public Button uploadButton, editButton;
     public Button postUploadButton, putEditButton, deleteDeleteButton;
 
+    public bool rescanCloudAfterEdit = false;
+
     public Texture2D texture;
     public RawImage rawImage;
     public GameObject uploadMenu, editMenu;
@@ -651,20 +653,38 @@ public class CloudUploading : CloudTrackableEventHandler
                     Debug.Log("request success");
                     uploadStatusText.text = "Saved!";
 
-                    // Since the image is saved to the cloud, we can change the local copy.
-                    currentImageData.MetaData = metadataStr;
-                    currentImageData.TargetName = targetName;
+                    if (rescanCloudAfterEdit){
 
-                    // Force update of target info.
-                    cloudContentManager.HandleTargetFinderResult(currentImageData);
+                        // We disable cloud tracking for x seconds. The reason why we do this is because it takes time for
+                        // Vuforia to actually delete the record. If we continue cloud tracking, it would retrack the record.
+                        DisableCloudTracking(2f);
 
-                    // The only issue with this method is we do not know the new tracking rating of the copy.
-                    // However, since our version of profiler does not show tracking rating, it should work fine.
+                        // To get all the tracked targets. For testing.
+                        // IEnumerable<Vuforia.ObjectTarget> obj = Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().GetTargetFinder<Vuforia.ImageTargetFinder>().GetObjectTargets();
+                        // IEnumerator myEnum = obj.GetEnumerator();
 
-                    // Also, if the new image fails the processor on Vuforia's side, it wouldn't make sense to
-                    // change the local copy's data. However, it would be more convenient for the user to see
-                    // the new updated version. Therefore, when changing the local copy, we are assuming the
-                    // new image to be processed successfully.
+                        // while(myEnum.MoveNext()){
+                        //     print(myEnum.Current);
+                        // }
+
+                        // Clear local copy.
+                        Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().GetTargetFinder<Vuforia.ImageTargetFinder>().ClearTrackables(false);
+                    } else {
+                        // Since the image is saved to the cloud, we can change the local copy.
+                        currentImageData.MetaData = metadataStr;
+                        currentImageData.TargetName = targetName;
+
+                        // Force update of target info.
+                        cloudContentManager.HandleTargetFinderResult(currentImageData);
+
+                        // The only issue with this method is we do not know the new tracking rating of the copy.
+                        // However, since our version of profiler does not show tracking rating, it should work fine.
+
+                        // Also, if the new image fails the processor on Vuforia's side, it wouldn't make sense to
+                        // change the local copy's data. However, it would be more convenient for the user to see
+                        // the new updated version. Therefore, when changing the local copy, we are assuming the
+                        // new image to be processed successfully.
+                    }
                     
                     // Close edit menu.
                     ToggleEditMenu();
@@ -757,7 +777,6 @@ public class CloudUploading : CloudTrackableEventHandler
                     // }
 
                     // Clear local copy.
-                    // This only works for laptop, fails to work on my mobile.
                     Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().GetTargetFinder<Vuforia.ImageTargetFinder>().ClearTrackables(false);
                     
                     // Vuforia.TrackerManager.Instance.GetTracker<Vuforia.ObjectTracker>().GetTargetFinder<Vuforia.ImageTargetFinder>().Stop();
