@@ -102,6 +102,12 @@ public class CloudUploading : CloudTrackableEventHandler
     public static Vuforia.TargetFinder.CloudRecoSearchResult currentImageData;
 
     private void Awake(){
+        
+        // Here are the documentations provided by the Vuforia team to access the cloud database.
+        // https://library.vuforia.com/articles/Solution/How-To-Use-the-Vuforia-Web-Services-API.htm
+        // https://library.vuforia.com/articles/Training/Using-the-VWS-API
+
+        
         texture = CameraImageAccess.texture;
     
         // By default, the camera loses track of an item during initialization.
@@ -125,7 +131,7 @@ public class CloudUploading : CloudTrackableEventHandler
         // Only post target if there is no other targets in camera.
         if (targetsInCamera > 0){
             Debug.Log("There must be no targets present to upload!");
-            openMenuStatusText.text = "There must be no targets present to upload!";
+            PrintStatusText("There must be no targets present to upload!");
 
             return;
         }
@@ -134,7 +140,7 @@ public class CloudUploading : CloudTrackableEventHandler
         if (userDefinedTargetHandler.m_FrameQuality != Vuforia.ImageTargetBuilder.FrameQuality.FRAME_QUALITY_MEDIUM && 
             userDefinedTargetHandler.m_FrameQuality != Vuforia.ImageTargetBuilder.FrameQuality.FRAME_QUALITY_HIGH){
             Debug.Log("Camera frame quality: " + userDefinedTargetHandler.m_FrameQuality);
-            openMenuStatusText.text = "Camera frame must be in medium or high quality!";
+            PrintStatusText("Camera frame must be in medium or high quality!");
 
             return;
         }
@@ -226,16 +232,6 @@ public class CloudUploading : CloudTrackableEventHandler
         if (editMenu.activeSelf){
             editMenu.SetActive(false);
 
-            // If no targets are active, enable upload button.
-            if (targetsInCamera == 0){
-                uploadButton.interactable = true;
-            }
-
-            // If no targets are active, disable edit button.
-            if (targetsInCamera == 0){
-                editButton.interactable = false;
-            }
-
             EnableCloudAndTracker(true);
 
             return;
@@ -244,7 +240,7 @@ public class CloudUploading : CloudTrackableEventHandler
         // Only edit target if it exists.
         if (targetsInCamera < 1){
             Debug.Log("There must be a target to edit!");
-            openMenuStatusText.text = "There must be a target to edit!";
+            PrintStatusText("There must be a target to edit!");
 
             return;
         }
@@ -273,7 +269,7 @@ public class CloudUploading : CloudTrackableEventHandler
 
         if (!ValidateString(nameField.text)){
             Debug.Log("Validation failed for name field {" + nameField.text + "}");
-            uploadStatusText.text = "Validation failed for name field!";
+            PrintStatusText("Validation failed for name field!");
             // isValid = false;
             return false;
         }
@@ -281,47 +277,54 @@ public class CloudUploading : CloudTrackableEventHandler
         // Matches any pattern with numbers only.
         if (!ValidateString(ageField.text, @"^\d+$")){
             Debug.Log("Validation failed for age field {" + ageField.text + "}");
-            uploadStatusText.text = "Validation failed for age field!";
+            PrintStatusText("Validation failed for age field!");
             // isValid = false;
             return false;
         }
 
         if (!ValidateString(phoneField.text, @"^\d+$")){
             Debug.Log("Validation failed for phone field {" + phoneField.text + "}");
-            uploadStatusText.text = "Validation failed for phone field!";
+            PrintStatusText("Validation failed for phone field!");
             // isValid = false;
             return false;
         }
 
         if (!ValidateString(addressField.text)){
             Debug.Log("Validation failed for address field {" + addressField.text + "}");
-            uploadStatusText.text = "Validation failed for address field!";
+            PrintStatusText("Validation failed for address field!");
             // isValid = false;
             return false;
         }
 
         if (!ValidateString(icField.text, @"^\d+$")){
             Debug.Log("Validation failed for ic field {" + icField.text + "}");
-            uploadStatusText.text = "Validation failed for ic field!";
+            PrintStatusText("Validation failed for ic field!");
             // isValid = false;
             return false;
         }
 
         if (!ValidateString(occupationField.text)){
             Debug.Log("Validation failed for occupation field {" + occupationField.text + "}");
-            uploadStatusText.text = "Validation failed for occupation field!";
+            PrintStatusText("Validation failed for occupation field!");
             // isValid = false;
             return false;
         }
 
         if (!ValidateString(biographyField.text)){
             Debug.Log("Validation failed for biography field {" + biographyField.text + "}");
-            uploadStatusText.text = "Validation failed for biography field!";
+            PrintStatusText("Validation failed for biography field!");
             // isValid = false;
             return false;
         }
 
         return isValid;
+    }
+
+    public void PrintStatusText(string input){
+        openMenuStatusText.text = string.Format("<color=red>{0}</color>: {1}", 
+            DateTime.Now.ToString("HH:mm:ss"),
+            input
+        );
     }
 
     public void CallPutTarget(){
@@ -338,14 +341,15 @@ public class CloudUploading : CloudTrackableEventHandler
         if (userDefinedTargetHandler.m_FrameQuality != Vuforia.ImageTargetBuilder.FrameQuality.FRAME_QUALITY_MEDIUM && 
             userDefinedTargetHandler.m_FrameQuality != Vuforia.ImageTargetBuilder.FrameQuality.FRAME_QUALITY_HIGH){
             Debug.Log("Camera frame quality: " + userDefinedTargetHandler.m_FrameQuality);
-            openMenuStatusText.text = "Camera frame must be in medium or high quality!";
+            PrintStatusText("Camera frame must be in medium or high quality!");
 
             return;
         }
 
         deleteDeleteButton.interactable = false;
         putEditButton.interactable = false;
-        uploadStatusText.text = "Saving...";
+        editButton.interactable = false;
+        PrintStatusText("Saving...");
 
         targetName = nameField.text;
 
@@ -362,7 +366,8 @@ public class CloudUploading : CloudTrackableEventHandler
     public void CallDeleteTarget(){
         deleteDeleteButton.interactable = false;
         putEditButton.interactable = false;
-        uploadStatusText.text = "Deleting...";
+        editButton.interactable = false;
+        PrintStatusText("Deleting...");
 
         StartCoroutine(DeleteTarget());
     }
@@ -423,7 +428,8 @@ public class CloudUploading : CloudTrackableEventHandler
         }
 
         postUploadButton.interactable = false;
-        uploadStatusText.text = "Uploading...";
+        uploadButton.interactable = false;
+        PrintStatusText("Uploading...");
 
         targetName = nameField.text;
 
@@ -444,11 +450,12 @@ public class CloudUploading : CloudTrackableEventHandler
     protected override void OnTrackingFound(){
         base.OnTrackingFound();
 
-        // If the upload menu is inactive, hide the open upload button.
+        // If the upload menu is inactive, hide the open upload menu button.
         if (!uploadMenu.activeSelf){
             uploadButton.interactable = false;
         }
 
+        // If the edit menu is inactive, show the open edit menu button.
         if (!editMenu.activeSelf){
             editButton.interactable = true;
         }
@@ -548,19 +555,26 @@ public class CloudUploading : CloudTrackableEventHandler
             Debug.Log("request error: " + request.error);
 
             string result_code = JsonUtility.FromJson<VWSResponse>(request.text).result_code;
-            uploadStatusText.text = "Error: " + result_code;
+
+            // The target's name is already in Vuforia database.
+            if (result_code == "TargetNameExist"){
+                PrintStatusText("Error: Name already exist! Please choose a different name.");
+            } else {
+                PrintStatusText("Error: " + result_code);
+            }
         }
         else
         {
             Debug.Log("request success");
             Debug.Log("returned data" + request.text);
-            uploadStatusText.text = "Uploaded!";
+            PrintStatusText("Uploaded!");
 
             // Close upload menu.
             ToggleUploadMenu();
         }
 
         postUploadButton.interactable = true;
+        uploadButton.interactable = true;
     }
 
     // https://library.vuforia.com/articles/Solution/How-To-Use-the-Vuforia-Web-Services-API.htm#How-To-Update-a-Target
@@ -637,7 +651,7 @@ public class CloudUploading : CloudTrackableEventHandler
                 Debug.Log("request error: " + request.Exception.Message);
 
                 string errorText = request.Exception.Message;
-                uploadStatusText.text = "Exception: " + errorText;
+                PrintStatusText("Exception: " + errorText);
 
                 break;
             
@@ -648,10 +662,17 @@ public class CloudUploading : CloudTrackableEventHandler
                     Debug.Log("request error: " + request.Response.Message);
                     
                     string result_code = JsonUtility.FromJson<VWSResponse>(request.Response.DataAsText).result_code;
-                    uploadStatusText.text = "Error: " + result_code;
+
+                    // The target is still being processed in Vuforia API.
+                    if (result_code == "TargetStatusNotSuccess"){
+                        PrintStatusText("Error: Profile is still being processed in Vuforia!");
+                    } else {
+                        PrintStatusText("Error: " + result_code);
+                    }
+
                 } else {
                     Debug.Log("request success");
-                    uploadStatusText.text = "Saved!";
+                    PrintStatusText("Saved!");
 
                     if (rescanCloudAfterEdit){
 
@@ -696,8 +717,10 @@ public class CloudUploading : CloudTrackableEventHandler
         // Enable buttons.
         deleteDeleteButton.interactable = true;
         putEditButton.interactable = true;
+        editButton.interactable = true;
     }
 
+    // https://library.vuforia.com/articles/Solution/How-To-Use-the-Vuforia-Web-Services-API.htm#How-To-Delete-a-Target
     IEnumerator DeleteTarget(){
         Debug.Log("CustomMessage: DeleteTarget()");
     
@@ -738,7 +761,7 @@ public class CloudUploading : CloudTrackableEventHandler
 		request.AddHeader("Content-Type", contentType);
 		request.AddHeader("Date", date);
         request.Send();
-        
+
         yield return StartCoroutine(request);
     
         switch(request.State){
@@ -748,7 +771,9 @@ public class CloudUploading : CloudTrackableEventHandler
                 Debug.Log("request error: " + request.Exception.Message);
 
                 string errorText = request.Exception.Message;
-                uploadStatusText.text = "Exception: " + errorText;
+                PrintStatusText("Exception: " + errorText);
+
+                editButton.interactable = true;
 
                 break;
             
@@ -759,10 +784,19 @@ public class CloudUploading : CloudTrackableEventHandler
                     Debug.Log("request error: " + request.Response.Message);
                     
                     string result_code = JsonUtility.FromJson<VWSResponse>(request.Response.DataAsText).result_code;
-                    uploadStatusText.text = "Error: " + result_code;
+
+                    // The target is still being processed in Vuforia API.
+                    if (result_code == "TargetStatusProcessing"){
+                        PrintStatusText("Error: Profile is still being processed in Vuforia!");
+                    } else {
+                        PrintStatusText("Error: " + result_code);
+                    }
+
+                    editButton.interactable = true;
+
                 } else {
                     Debug.Log("request success");
-                    uploadStatusText.text = "Deleted!";
+                    PrintStatusText("Deleted!");
 
                     // We disable cloud tracking for x seconds. The reason why we do this is because it takes time for
                     // Vuforia to actually delete the record. If we continue cloud tracking, it would retrack the record.
@@ -784,6 +818,10 @@ public class CloudUploading : CloudTrackableEventHandler
 
                     // Close edit menu.
                     ToggleEditMenu();
+
+                    // Enable the upload button. This is needed because the tracker is disabled, and therefore, events are not being triggered
+                    // which in turn stops our handler from setting button states.
+                    uploadButton.interactable = true;
                 }
 
                 break;
@@ -806,43 +844,4 @@ public class CloudUploading : CloudTrackableEventHandler
         forceTrackerDisabledSeconds = false;
         EnableCloudAndTracker(true);
     }
-
-    // void PutUpdateTarget()
-    // {
-    //     Debug.Log("CustomMessage: PutUpdateTarget()");
-    
-    //     string requestPath = "/targets" + currentImageData.UniqueTargetId;
-    //     string serviceURI = url + requestPath;
-    //     string httpAction = "PUT";
-    //     string contentType = "application/json";
-    //     string date = string.Format("{0:r}", DateTime.Now.ToUniversalTime());
-    
-    //     // if your texture2d has RGb24 type, don't need to redraw new texture2d
-    //     Texture2D tex = new Texture2D(texture.width,texture.height,TextureFormat.RGB24,false);
-    //     tex.SetPixels(texture.GetPixels());
-    //     tex.Apply();
-    //     byte[] image = tex.EncodeToPNG();
-
-    //     string metadataStr = jsonData;
-    //     byte[] metadata = System.Text.ASCIIEncoding.ASCII.GetBytes(metadataStr);
-    //     PostNewTrackableRequest model = new PostNewTrackableRequest();
-    //     model.name = targetName;
-    //     model.width = 64.0f; // don't need same as width of texture
-    //     model.image = System.Convert.ToBase64String(image);
-        
-    //     model.application_metadata = System.Convert.ToBase64String(metadata);
-    //     string requestBody = JsonUtility.ToJson(model);
-
-    //     VWS.Instance.UpdateTarget(currentImageData.UniqueTargetId, currentImageData.TargetName, 64, tex, true, metadataStr, resp => {
-    //         Debug.Log(resp.result_code);
-    //         if (resp.result_code == "Success"){
-    //             uploadStatusText.text = "Saved!";
-    //             ToggleEditMenu();
-    //         } else {
-    //             uploadStatusText.text = resp.result_code;
-    //         }
-    //     });
-
-    //     postUploadButton.interactable = true;
-    // }
 }
